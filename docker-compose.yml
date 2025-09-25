@@ -1,0 +1,15 @@
+services:
+  flask:
+    build: ./app
+    platform: linux/amd64
+    ports:
+     - "127.0.0.1:5000:5000"
+    volumes:
+     - ./app:/app
+    restart: unless-stopped
+    environment:
+      - PROJECT_NAME
+      - FLASK_ENV=development
+    command: flask --app ${PROJECT_NAME:-app}.py --debug run --host=0.0.0.0
+    stdin_open: true
+    tty: true
