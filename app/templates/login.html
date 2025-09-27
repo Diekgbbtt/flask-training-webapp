@@ -15,14 +15,14 @@
       <button type="submit" class="btn btn-primary">Login</button>
       <button type="submit" class="btn btn-primary" formaction="/register">Register</button>
     </form>
-    {% if wrong_pass %}
+    {% if wrong_credential %}
     <span class="badge bg-danger">Incorrect username or password</span>
     {% endif %}
     {% if wrong_username %}
     <span class="badge bg-danger">Incorrect username already exists</span>
     {% endif %}
     {% if invalid_input %}
-    <span class="badge bg-danger">The form contains errors</span>
+    <span class="badge bg-danger">Missing username or password</span>
     {% endif %}            
   </div>
 </div>

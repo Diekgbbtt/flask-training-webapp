@@ -1,53 +1,20 @@
-from flask import Flask, render_template
+import secrets
+from flask import Flask, redirect, render_template, session, request, url_for
+from utilities.util import is_client_authn, validate_user_data
+from model.orm import db, User
 
 app = Flask(__name__)
 
-class Person:
-    def __init__(self,name,password) -> None:
-        self._name = name
-        self._password = password
-        self._created = set()
-        self._voted = []
+# Generate a strong, cryptographically secure secret key for session cookies
+app.secret_key = secrets.token_urlsafe(32)
+app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///app/test.db'
 
-    @property
-    def name(self):
-        return self._name
+# Initialize the database with the app
+db.init_app(app)
 
-    @name.setter
-    def name(self,n):
-        self._name = n
-
-    @property
-    def password(self):
-        return self._password
-
-    @password.setter
-    def password(self,p):
-        self._password = p
-
-    @property
-    def created(self):
-        return self._created
-
-    def addcreated(self,t):
-        self._created.add(t)
-        t._createdBy = self
-
-    def removecreated(self,t):
-        self._created.remove(t)
-        del t._createdBy
-
-    @property
-    def voted(self):
-        return self._voted
-
-    def addvoted(self,t):
-        self._voted.append(t)
-        t._votedBy.append(self)
-
-    def removevoted(self,t):
-        self._voted.remove(t)
-        t._votedBy.remove(self)
+# TODO - verify dicrepancies between persistent layer and classes modelling structurs
+# with app.app_context():
+#     db.create_all()
 
 
 class Thought:
@@ -55,7 +22,6 @@ class Thought:
     def __init__(self,content) -> None:
         self._id = Thought.ids
         Thought.ids = Thought.ids+1
-        self._content = content
         self._createdBy = None
         self._votedBy = []
     
@@ -99,27 +65,73 @@ class Thought:
         p._voted.remove(self)
 
 
-persons = set()    
-thoughts = []
 
 # Here we allow unauthenticated users to access the index page.
 @app.route('/')
 def index():
     return render_template('index.html')
 
-@app.route('/login', methods=['POST', 'GET'])
+@app.get('/login')
 def login():
-    
-    
+    # check if user already authenticated checking for cookie in request if so redict to index
+
+    if is_client_authn():
+        return render_template('index.html')
+
+    # not authenticated, return auth html page with form
     return render_template('login.html')
+
+@app.post('/login')
+def post_login_details():
+
+    # check if request present a valid session cookie, user already authenicated - return index
+    if is_client_authn():
+        return redirect(url_for('index'))
+
+    # not authenticated, process form data - always verify the validity of the form before processing, check presence of username and password fields
+    if not validate_user_data(request.form) :
+        return render_template('login.html', invalid_input=True)
+        
+    # in the User DB table check for entry with the username passed throguh the form field 'username' with ORM module
+    if not User.check_user_existence(usr=request.form.usernmame, pwd=request.form.password) :
+        return render_template('login.html', wrong_credential=True)
+    
+    # set a session, return index page with cookies
+    session['username'] = request.form.username
+    return render_template('index.html')
+
+    # if password is wrong, return render_template('login.html', wrong_credential=true)
+    # if there is no User table entry with tha username return render_tempalte('login.html', wrong_credential=true)
+    # if the request does not have required fields return rendere_template('login.hmtl', wrong_request=true)
+
 
 @app.route('/logout', methods=['POST'])
 def logout():
-    pass    
+    if is_client_authn():
+        session.clear()
+    # here check for user existence in db should be addes
+    return render_template('index.html')
+
+
 
 @app.route('/register', methods=['POST'])
 def register():
-    pass
+       # check if request present a valid session cookie, user already authenicated - return index
+    if is_client_authn():
+        return redirect(url_for(('index')))
+
+    # not authenticated, process form data - always verify the validity of the form before processing, check presence of username and password fields
+    if not validate_user_data(request.form) :
+        return render_template('login.html', invalid_input=True)
+        
+    # in the User DB table check for entry with the username passed throguh the form field 'username' with ORM module
+    if not User.check_user_existence(usr=request.form.usernmame, pwd=request.form.password) :
+        return render_template('login.html', wrong_username=True)
+
+    # add user to db table and create session
+    User.add_user(request.form)
+    session['username'] = request.form.username
+    return redirect(url_for('index'))
 
 @app.route('/add_thought', methods=['POST'])
 def add_thought():
@@ -132,5 +144,3 @@ def delete_thought():
 @app.route('/vote_thought')
 def vote_thought():
     pass
-
-
