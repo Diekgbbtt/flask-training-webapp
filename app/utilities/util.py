@@ -1,5 +1,4 @@
-from typing import Any, Optional
-
+from typing import Any, Optional, Generic, TypeVar
 from app import session
 from jsonschema import validate, ValidationError
 
@@ -41,4 +40,3 @@ def validate_user_data(data: dict, schema : Optional[dict]) -> tuple[bool, str]:
         return False, str(e.message)
     except Exception as e:
         return False, f"Validation error: {str(e)}"
-
