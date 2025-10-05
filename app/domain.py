@@ -1,10 +1,22 @@
 # backend domain logic : middleware for integration with external apps, db
 
-from app import db
-from model import User, Thought, Vote
+from app import db, app
+from model import User, Thought, Vote, BASE_USER, OTHER, Role
+from flask_user import UserManager
 
 
 class Domain:
+
+    @staticmethod
+    def initialise_domain():
+        with app.app_context():
+            db.create_all()
+            roles = Role.query.all()
+            if len(roles) == 0:
+                db.session.add(Role(name=BASE_USER))
+                db.session.add(Role(name=OTHER))
+                db.session.commit()
+        user_manager = UserManager(app, db, User)
 
     @staticmethod
     def create_user(username, password):
@@ -66,9 +78,9 @@ class Domain:
             return False, str(e)
 
     @staticmethod
-    def create_thought_userid(content, person_id):
+    def create_thought_userid(content, user_id):
         try:
-            thought = Thought(content=content, person_id=person_id)
+            thought = Thought(content=content, person_id=user_id)
             db.session.add(thought)
             db.session.commit()
             return True, thought
@@ -78,8 +90,13 @@ class Domain:
     @staticmethod
     def create_thought_username(content, username):
         try:
-            user = Domain.get_user_by_username(username)
-            Domain.create_thought_userid(content, user.id)
+            s, rs = Domain.get_user_by_username(username)
+            if not s:
+                return False, rs
+            s, rs = Domain.create_thought_userid(content, rs.id)
+            if not s:
+                return False, rs
+            return True, rs
         except Exception as e:
             db.session.rollback()
             return False, str(e)
@@ -189,3 +206,31 @@ class Domain:
     @staticmethod
     def get_all_user_thoughts(person_id):
         return Domain.get_thoughts_by_user(person_id)
+
+    
+    @staticmethod
+    def get_role_by_name(role_name):
+        try:
+            role = Role.query.filter_by(name=role_name).first()
+            if role:
+                return True, role
+            return False, "Role not found"
+        except Exception as e:
+            return False, str(e)
+
+    @staticmethod
+    def add_role_to_user(user : User, role : Role):
+        try:
+            user.roles.append(role)
+            db.session.commit()
+            return True, ""
+        except Exception as e:
+            db.session.rollback()
+            return False, str(e)
+
+    
+    @staticmethod
+    def check_role(user : User, role : [BASE_USER, OTHER]):
+        return user.roles == role
+
+    
