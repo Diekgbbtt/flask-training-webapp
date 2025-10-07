@@ -28,13 +28,13 @@ app.logger.setLevel(logging.DEBUG)
 
 db = SQLAlchemy(app)
 # Import models after db is initialized
-from domain import Domain, BASE_USER, OTHER
-Domain.initialise_domain()
+from domain import Domain, BASE_USER, OTHER, SecurityException
+domain = Domain(app=app, db=db)
 
 
 @app.route('/')
 def index():
-    s, rs = Domain.get_all_thoughts()
+    s, rs = domain.get_all_thoughts()
     if not s:
         return render_template('index.html', err=rs)
     return render_template('index.html', table=rs)
@@ -51,10 +51,10 @@ def error():
 
 @user_registered.connect_via(app)
 def _user_registers_assign_roles_hok(sender, user, **kwargs):
-    s, rs = Domain.get_role_by_name(BASE_USER)
+    s, rs = domain.get_role_by_name(BASE_USER)
     if not s:
         return redirect(url_for('error'))
-    s, rs = Domain.add_role_to_user(user, rs)
+    s, rs = domain.add_role_to_user(user, rs)
     if not s:
         return redirect(url_for('error'))
 
@@ -67,12 +67,13 @@ def member_page():
 @login_required
 @roles_required(BASE_USER)
 def add_thought():
-    # TODO verify form data schema
+# TODO verify form data schema
     cnt = request.form['thought']
-    s, errmsg = Domain.create_thought_username(content=cnt, username=current_user.username)
-    if not s:
+    try:
+        s, errmsg = domain.create_thought_userid(content=cnt, user=current_user)
+    except SecurityException as se:
         # TODO implement error handling
-        return redirect(url_for('error'))
+        return redirect(url_for('error', msg=se.msg))
     return redirect(url_for('index'))
 
 
@@ -82,10 +83,13 @@ def add_thought():
 # TODO verify form data schema
 def delete_thought():
     tid = request.args['id']
-    s, errmsg = Domain.delete_thought(tid)
+    try:
+        s, errmsg = domain.delete_thought(tid)
+    except SecurityException as se:
+        return redirect(url_for('error', msg=se.msg))
     if not s:
         return redirect(url_for('error'))
-    redirect(url_for('index'))
+    return redirect(url_for('index'))
 
 @app.route('/vote_thought')
 @login_required
@@ -93,10 +97,13 @@ def delete_thought():
 # TODO sanitize id
 def vote_thought():
     tid = request.args['id']
-    s, errmsg = Domain.create_vote_username(thought_id=tid, username=current_user.username)
+    try:
+        s, errmsg = domain.create_vote_username(thought_id=tid, username=current_user.username)
+    except SecurityException as se:
+        return redirect(url_for('error', msg=se.msg))
     if not s:
         return redirect(url_for('error'))
-    redirect(url_for('index'))
+    return redirect(url_for('index'))
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000, debug=True)

@@ -1,0 +1,9 @@
+entity Role;
+
+entity Person in Role;
+
+entity Thought {
+    creator: Person
+};
+
+// TODO

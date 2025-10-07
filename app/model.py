@@ -47,8 +47,8 @@ class Role(db.Model):
 class UserRoles(db.Model):
     __tablename__ = 'userroles'
     id = db.Column(db.Integer, primary_key=True)
-    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False, unique=True)
-    role_id = db.Column(db.Integer, db.ForeignKey('roles.id'), nullable=False)
+    user = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False, unique=True)
+    role = db.Column(db.Integer, db.ForeignKey('roles.id'), nullable=False)
 
 class Thought(db.Model):
 
@@ -56,7 +56,7 @@ class Thought(db.Model):
     
     id = db.Column(db.Integer , primary_key=True)
     content = db.Column(db.String (500), nullable=False, index=True)
-    person_id = db.Column(db.Integer , db.ForeignKey('users.id'), index=True)
+    user = db.Column(db.Integer , db.ForeignKey('users.id'), index=True)
     votedBy = db.relationship('Vote', backref='votee')
 
 class Vote(db.Model):
@@ -64,8 +64,8 @@ class Vote(db.Model):
     __tablename__ = 'votes'
     
     id = db.Column(db.Integer , primary_key =True)
-    person_id = db.Column(db.Integer , db.ForeignKey('users.id'))
-    thought_id = db.Column(db.Integer , db.ForeignKey('thoughts.id'))
+    person = db.Column(db.Integer , db.ForeignKey('users.id'))
+    thought = db.Column(db.Integer , db.ForeignKey('thoughts.id'))
 
 
     # @staticmethod
