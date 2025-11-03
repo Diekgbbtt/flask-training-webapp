@@ -6,4 +6,37 @@ entity Thought {
     creator: Person
 };
 
-// TODO
+entity Role;
+
+entity Person in Role;
+
+entity ThoughtsContainer;
+// Cedar best practice: For "Can someone create ...?" authorization questions, use a "container" 
+// entity that represents where the object would be stored (e.g., database, folder, project).
+// This avoids the security problem of having to create the actual object just to ask permission:
+// if you must create a Thought to ask "can I create a Thought?", the authorization check becomes pointless.
+// The question then becomes "Can X create a thought in store Y?"
+
+entity Thought {
+    creator: Person
+};
+// Alternatively, use membership: `entity Thought in Person;`
+
+action addThought appliesTo {
+    principal: Person,
+    resource: ThoughtsContainer
+};
+
+action deleteThought appliesTo {
+    principal: Person,
+    resource: Thought
+};
+
+action voteThought appliesTo {
+    principal: Person,
+    resource: Thought,
+    context: {
+        personalVoteCount: Long
+    }
+};
+

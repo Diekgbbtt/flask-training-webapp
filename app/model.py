@@ -47,8 +47,8 @@ class Role(db.Model):
 class UserRoles(db.Model):
     __tablename__ = 'userroles'
     id = db.Column(db.Integer, primary_key=True)
-    user = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False, unique=True)
-    role = db.Column(db.Integer, db.ForeignKey('roles.id'), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False, unique=True)
+    role_id = db.Column(db.Integer, db.ForeignKey('roles.id'), nullable=False, unique=True)
 
 class Thought(db.Model):
 

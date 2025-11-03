@@ -51,10 +51,10 @@ def error():
 
 @user_registered.connect_via(app)
 def _user_registers_assign_roles_hok(sender, user, **kwargs):
-    s, rs = domain.get_role_by_name(BASE_USER)
+    s, rs = domain.get_role_by_name(role_name=BASE_USER)
     if not s:
         return redirect(url_for('error'))
-    s, rs = domain.add_role_to_user(user, rs)
+    s, rs = domain.add_role_to_user(user=user, role=rs)
     if not s:
         return redirect(url_for('error'))
 
@@ -84,7 +84,7 @@ def add_thought():
 def delete_thought():
     tid = request.args['id']
     try:
-        s, errmsg = domain.delete_thought(tid)
+        s, errmsg = domain.delete_thought(tid, user=current_user)
     except SecurityException as se:
         return redirect(url_for('error', msg=se.msg))
     if not s:
@@ -99,11 +99,12 @@ def vote_thought():
     tid = request.args['id']
     try:
         s, errmsg = domain.create_vote_username(thought_id=tid, username=current_user.username)
-    except SecurityException as se:
-        return redirect(url_for('error', msg=se.msg))
-    if not s:
-        return redirect(url_for('error'))
-    return redirect(url_for('index'))
+        if not s:
+            return redirect(url_for('error', msg=errmsg))
+        return redirect(url_for('index'))
+    
+    except Exception as e:
+        return redirect(url_for('error', msg=str(e)))
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000, debug=True)

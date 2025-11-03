@@ -10,6 +10,6 @@ services:
     environment:
       - PROJECT_NAME
       - FLASK_ENV=development
-    command: flask --app ${PROJECT_NAME:-app}.py --debug run --host=0.0.0.0
+    command: flask --app ${PROJECT_NAME:-app}.py --debug run --host=0.0.0.0 --port 5000
     stdin_open: true
     tty: true

@@ -117,6 +117,10 @@ class Domain:
             if self.db:
                 self.db.session.rollback()
             raise se
+        except Exception as e:
+            if self.db:
+                self.db.session.rollback()
+            return False, str(e)
         
     
     def create_thought_username(self, content, user):
@@ -133,7 +137,7 @@ class Domain:
             return False, str(e)
 
     
-    def get_all_thoughts():
+    def get_all_thoughts(self):
         try:
             thoughts = Thought.query.all()
             return True, thoughts
@@ -172,40 +176,67 @@ class Domain:
             return False, str(e)
 
     
-    def delete_thought(self, thought_id):
+    def delete_thought(self, thought_id, user):
         try:
             thought = Thought.query.get(thought_id)
             if not thought:
                 return False, "Thought not found"
+            if hasattr(self, 'cedar'):
+                self.cedar.assert_allowed(principal=user, action="deleteThought", resource=thought)
             self.db.session.delete(thought)
+            self.db.session.commit()
+            return True, ""
+        except SecurityException as se:
+            if self.db:
+                self.db.session.rollback()
+            raise se
+        except Exception as e:
+            if self.db:
+                self.db.session.rollback()
+            return False, str(e)
+
+
+    def check_vote_limit(self, person_id, thought_id):
+        try:
+            rs, votes = self.get_votes_by_thought_user(thought_id, person_id)
+            if not rs:
+                return False
+            if len(votes) >= 3:
+                return False
+            return True
+        except Exception as e:
+            raise e
+
+    def create_vote_userid_thoughtid(self, person_id, thought_id):
+        try:
+            vote = Vote(person=person_id, thought=thought_id)
+            if not self.check_vote_limit(person_id, thought_id):
+                raise SecurityException("You have reached the maximum number of votes for this thought")
+            self.db.session.add(vote)
             self.db.session.commit()
             return True, ""
         except Exception as e:
             self.db.session.rollback()
-            return False, str(e)
-
-    
-    def create_vote_userid(self, person_id, thought_id):
-        try:
-            vote = Vote(user=person_id, thought=thought_id)
-            self.db.session.add(vote)
-            self.db.session.commit()
-            return True, vote
-        except Exception as e:
-            self.db.session.rollback()
-            return False, str(e)
+            raise e
     
     
     def create_vote_username(self, thought_id, username):
         try:
             user = Domain.get_user_by_username(username)
-            Domain.create_vote_userid(user=user.id, thought=thought_id)
+            thought = Domain.get_thought_by_id(thought_id)
+            if hasattr(self, 'cedar'):
+                self.cedar.assert_allowed(principal=user, action="voteThought", resource=thought)
+            rs, errsmg = self.create_vote_userid_thoughtid(person_id=user.id, thought_id=thought_id)
+            if not rs:
+                return False, errsmg
+            return True, ""
+        except SecurityException as se:
+            return False, str(se)
         except Exception as e:
-            self.db.session.rollback()
             return False, str(e)
 
     
-    def get_votes_by_thought(thought_id):
+    def get_votes_by_thought(self, thought_id):
         try:
             votes = Vote.query.filter_by(thought=thought_id).all()
             return True, votes
@@ -213,13 +244,19 @@ class Domain:
             return False, str(e)
 
     
-    def get_votes_by_user(person_id):
+    def get_votes_by_user(self, person_id):
         try:
             votes = Vote.query.filter_by(user=person_id).all()
             return True, votes
         except Exception as e:
             return False, str(e)
 
+    def get_votes_by_thought_user(self, thought_id, person_id):
+        try:
+            votes = Vote.query.filter_by(thought=thought_id, user=person_id).all()
+            return True, votes
+        except Exception as e:
+            return False, str(e)
     
     def delete_vote(self, person_id, thought_id):
         try:
@@ -240,7 +277,7 @@ class Domain:
 
     
     
-    def get_role_by_name(role_name):
+    def get_role_by_name(self, role_name):
         try:
             role = Role.query.filter_by(name=role_name).first()
             if role:
@@ -261,7 +298,7 @@ class Domain:
 
     
     
-    def check_role(user : User, role : [BASE_USER, OTHER]):
+    def check_role(self, user : User, role : [BASE_USER, OTHER]):
         return user.roles == role
 
     
